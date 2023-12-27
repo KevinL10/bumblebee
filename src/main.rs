@@ -21,7 +21,7 @@ const HIDDEN_SIZE: usize = 32;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
 const LEARNING_RATE: f64 = 3e-4;
 const BATCH_SIZE: usize = 256;
-
+const EPOCH: usize = 300;
 const HEAD_SIZE: usize = 32;
 
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
@@ -195,27 +195,28 @@ impl Model {
 
 fn main() -> Result<()> {
     // load dataset
-    // const SZ: usize = 1000;
+    const TRAIN_SZ: usize = 20000;
+    const TEST_SZ: usize = 1000;
     let device = Device::new_cuda(0)?;
 
     let dataset = load_dir("data/cifar-10")?;
     let train_images = dataset
         .train_images
-        // .i((..SZ, .., .., ..))?
+        .i((..TRAIN_SZ, .., .., ..))?
         .to_device(&device)?;
     let train_labels = dataset
         .train_labels
-        // .i(..SZ)?
+        .i(..TRAIN_SZ)?
         .to_dtype(DType::U32)?
         .to_device(&device)?;
 
     let test_images = dataset
         .test_images
-        // .i((..SZ, .., .., ..))?
+        .i((..TEST_SZ, .., .., ..))?
         .to_device(&device)?;
     let test_labels = dataset
         .test_labels
-        // .i(..SZ)?
+        .i(..TEST_SZ)?
         .to_dtype(DType::U32)?
         .to_device(&device)?;
 
@@ -233,7 +234,7 @@ fn main() -> Result<()> {
     let n_batches = train_images.dim(0)? / BATCH_SIZE;
     let mut batch_idx = (0..n_batches).collect::<Vec<usize>>();
 
-    for epoch in 1..100 {
+    for epoch in 1..EPOCH {
         batch_idx.shuffle(&mut thread_rng());
         let mut total_loss = 0f32;
 
@@ -259,7 +260,10 @@ fn main() -> Result<()> {
                 .to_scalar::<f32>()?;
 
             let accuracy = n_correct / (test_labels.dim(0)? as f32);
-            println!("epoch {epoch}/100. Training: {total_loss};  Validation: {0}%", accuracy * 100f32);
+            println!(
+                "epoch {epoch}/{EPOCH}. Training: {total_loss};  Validation: {0}%",
+                accuracy * 100f32
+            );
         }
     }
 
