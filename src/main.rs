@@ -1,5 +1,11 @@
 use candle_core::{DType, Device, IndexOp, Module, Result, Tensor};
 use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Optimizer, Linear, VarBuilder, AdamW, ParamsAdamW, VarMap, loss::cross_entropy};
+use candle_datasets::vision::cifar::{load_dir};
+
+use rand::thread_rng;
+use rand::seq::SliceRandom;
+
+
 // use serde::Deserialize;
 
 const NUM_CLASSES: usize = 10;
@@ -7,8 +13,10 @@ const DEVICE: Device = Device::Cpu;
 const PATCH_SIZE: usize = 4;
 const D: usize = 32;
 const LEARNING_RATE: f64 = 1e-3;
-#[derive(Debug)]
+const BATCH_SIZE: usize = 4;
 
+
+#[derive(Debug)]
 struct Model {
     patch_embedding: Conv2d,
     classifier: Linear,
@@ -43,9 +51,21 @@ impl Model {
 }
 
 fn main() -> Result<()> {
-    let image = Tensor::randn(0f32, 1., (4, 3, 32, 32), &Device::Cpu)?;
-    let targets: Vec<i64> = vec![3, 9, 2, 3];
-    let targets = Tensor::from_vec(targets, (4, ),&Device::Cpu)?;
+    // load dataset
+    // let image = Tensor::randn(0f32, 1., (4, 3, 32, 32), &Device::Cpu)?;
+
+
+    const SZ: usize = 100;
+    let dataset = load_dir("data/cifar-10")?;
+    let train_images = dataset.train_images.i((..SZ, .., .., ..))?;
+    let train_labels = dataset.train_labels.i(..SZ)?;
+
+    let test_images = dataset.test_images.i((..SZ, .., .., ..))?;
+    let test_labels = dataset.test_labels.i(..SZ)?;
+
+
+    // let targets: Vec<i64> = vec![3, 9, 2, 3];
+    // let targets = Tensor::from_vec(targets, (4, ),&Device::Cpu)?;
 
     let varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
@@ -59,15 +79,27 @@ fn main() -> Result<()> {
     let mut optimizer = AdamW::new(varmap.all_vars(), params)?;
 
 
-    for epoch in 1.. 3900 {
-        let logits = model.forward(&image)?;
-        let loss = cross_entropy(&logits, &targets)?;
-        optimizer.backward_step(&loss)?;
+    let n_batches = train_images.dim(0)? / BATCH_SIZE;
+    let mut batch_idx = (0..n_batches).collect::<Vec<usize>>();
 
-        let total_loss  = loss.to_vec0::<f32>()?; 
 
-        if epoch % 100 == 0{
-            println!("loss: {total_loss}");
+    for epoch in 1.. 100 {
+        batch_idx.shuffle(&mut thread_rng());
+
+        let mut total_loss = 0f32;
+
+        for idx in batch_idx.iter() {
+            let logits = model.forward(&train_images.narrow(0, idx * BATCH_SIZE, BATCH_SIZE)?)?;
+            let loss = cross_entropy(&logits, &train_labels.narrow(0, idx * BATCH_SIZE, BATCH_SIZE)?)?;
+            optimizer.backward_step(&loss)?;
+
+            total_loss  += loss.to_vec0::<f32>()?; 
+        }
+
+        if epoch % 5 == 0{
+            let logits = model.forward(&test_images)?;
+            let loss = cross_entropy(&logits,&test_labels)?.to_vec0::<f32>()?;
+            println!("epoch {epoch}/100. Training: {total_loss};  Validation: {loss}");
         }
     }
 

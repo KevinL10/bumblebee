@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 candle-core = { version = "0.3.2", features = ["cuda"] }
+candle-datasets = "0.3.2"
 candle-nn = { version = "0.3.2", features = ["cuda"] }
 candle-optimisers = { version = "0.3.1", features = ["cuda"] }
+rand = "0.8.5"
