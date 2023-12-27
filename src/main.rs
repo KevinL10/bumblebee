@@ -15,14 +15,16 @@ use rand::thread_rng;
 // use serde::Deserialize;
 
 const NUM_CLASSES: usize = 10;
-const N_BLOCKS: usize = 2;
+const N_BLOCKS: usize = 6;
 const PATCH_SIZE: usize = 4;
 const HIDDEN_SIZE: usize = 32;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
 const LEARNING_RATE: f64 = 3e-4;
 const BATCH_SIZE: usize = 256;
 const EPOCH: usize = 300;
-const HEAD_SIZE: usize = 32;
+
+// NUM_HEADS * HEAD_SIZE = HIDDEN_SIZE
+const NUM_HEADS: usize = 4;
 
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
 
@@ -58,10 +60,10 @@ struct AttentionHead {
 }
 
 impl AttentionHead {
-    fn new(vb: VarBuilder) -> Result<Self> {
-        let key = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
-        let query = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
-        let value = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
+    fn new(vb: VarBuilder, head_size: usize) -> Result<Self> {
+        let key = linear(HIDDEN_SIZE, head_size, vb.pp("key"))?;
+        let query = linear(HIDDEN_SIZE, head_size, vb.pp("key"))?;
+        let value = linear(HIDDEN_SIZE, head_size, vb.pp("key"))?;
 
         Ok(Self { key, query, value })
     }
@@ -82,8 +84,36 @@ impl Module for AttentionHead {
     }
 }
 
+struct MultiAttentionHead {
+    heads: Vec<AttentionHead>,
+}
+
+impl MultiAttentionHead {
+    fn new(vb: VarBuilder) -> Result<Self> {
+        // take hidden size -> hidden size
+        let head_size = HIDDEN_SIZE / NUM_HEADS;
+        let mut heads: Vec<AttentionHead> = Vec::new();
+        for i in 0..NUM_HEADS {
+            heads.push(AttentionHead::new(vb.pp(format!("block-{i}")), head_size)?)
+        }
+
+        Ok(Self { heads })
+    }
+}
+
+impl Module for MultiAttentionHead {
+    fn forward(&self, x: &Tensor) -> Result<Tensor> {
+        let xs = self
+            .heads
+            .iter()
+            .map(|head| head.forward(x).unwrap())
+            .collect::<Vec<Tensor>>();
+        Tensor::cat(&xs, 2)
+    }
+}
+
 struct Block {
-    attention: AttentionHead,
+    attention: MultiAttentionHead,
     mlp: MLP,
     ln1: LayerNorm,
 }
@@ -91,7 +121,7 @@ struct Block {
 impl Block {
     fn new(vb: VarBuilder) -> Result<Self> {
         let mlp = MLP::new(vb.pp("mlp"))?;
-        let attention = AttentionHead::new(vb.pp("attention"))?;
+        let attention = MultiAttentionHead::new(vb.pp("attention"))?;
         let ln1 = layer_norm(
             HIDDEN_SIZE,
             LayerNormConfig {
