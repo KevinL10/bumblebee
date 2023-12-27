@@ -2,7 +2,7 @@
 
 model implementation
 - [x] load cifar-10 dataset and update training process (batching)
-- [ ] add learnable start token `[class]` & classify
+- [x] add learnable start token `[class]` & classify
 - [ ] change classification head to MLP
 - [ ] add layernorm & multi-head attention 
 - [ ] add layernorm & mlp & repeat 
