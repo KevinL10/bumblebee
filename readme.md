@@ -5,7 +5,7 @@ model implementation
 - [x] add learnable start token `[class]` & classify
 - [ ] change classification head to MLP
 - [ ] add layernorm & multi-head attention 
-- [ ] add layernorm & mlp & repeat 
+- [x] add layernorm & mlp & repeat 
 - [ ] benchmarking
 
 

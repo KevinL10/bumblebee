@@ -1,81 +1,155 @@
-use candle_core::{DType, Device, IndexOp, Module, Result, Tensor};
-use candle_nn::{embedding, Embedding};
-use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Optimizer, Linear, VarBuilder, AdamW, ParamsAdamW, VarMap, loss::cross_entropy};
-use candle_datasets::vision::cifar::{load_dir};
+use candle_core::{DType, Device, IndexOp, Module, Result, Tensor, Var};
+use candle_datasets::vision::cifar::load_dir;
+use candle_nn::{
+    conv2d, linear, loss::cross_entropy, AdamW, Conv2d, Conv2dConfig, Linear, Optimizer,
+    ParamsAdamW, VarBuilder, VarMap,
+};
+use candle_nn::{
+    embedding, layer_norm, seq, Activation, Embedding, LayerNorm, LayerNormConfig, Sequential,
+};
 
-use rand::thread_rng;
 use rand::seq::SliceRandom;
-
+use rand::thread_rng;
 
 // use serde::Deserialize;
 
 const NUM_CLASSES: usize = 10;
+const N_BLOCKS: usize = 2;
 const DEVICE: Device = Device::Cpu;
 const PATCH_SIZE: usize = 4;
-const D: usize = 32;
+const HIDDEN_SIZE: usize = 32;
+const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
 const LEARNING_RATE: f64 = 1e-3;
 const BATCH_SIZE: usize = 4;
 
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
 
 #[derive(Debug)]
+
+struct MLP {
+    layer1: Linear,
+    // gelu: Activation,
+    layer2: Linear,
+}
+
+impl MLP {
+    fn new(vb: VarBuilder) -> Result<Self> {
+        let layer1 = linear(HIDDEN_SIZE, INTERMEDIATE_SIZE, vb.pp("mlp_l1"))?;
+        let layer2 = linear(INTERMEDIATE_SIZE, HIDDEN_SIZE, vb.pp("mlp_l2"))?;
+
+        Ok(Self { layer1, layer2 })
+    }
+}
+
+// MLP used in each block; takes (b_size, n_patches, embedding) --> (b_size, n_patches, embedding')
+// use dropout for training?
+impl Module for MLP {
+    fn forward(&self, x: &Tensor) -> Result<Tensor> {
+        x.apply(&self.layer1)?.gelu()?.apply(&self.layer2)
+    }
+}
+
+struct Block {
+    // attention: AttentionHead,
+    mlp: MLP,
+    ln1: LayerNorm,
+}
+
+impl Block {
+    fn new(vb: VarBuilder) -> Result<Self> {
+        let mlp = MLP::new(vb.pp("mlp"))?;
+
+        let ln1 = layer_norm(
+            HIDDEN_SIZE,
+            LayerNormConfig {
+                ..Default::default()
+            },
+            vb.pp("ln1"),
+        )?;
+        Ok(Self { mlp, ln1 })
+    }
+}
+
+impl Module for Block {
+    fn forward(&self, x: &Tensor) -> Result<Tensor> {
+        // layer norm -> multihead   (and add original x for residual connection)
+
+        // layer norm -> mlp
+        let x = (x + x.apply(&self.ln1)?.apply(&self.mlp))?;
+        Ok(x)
+    }
+}
+
 struct Model {
     patch_embedding: Conv2d,
     pos_embedding: Embedding,
     cls_token: Tensor,
     classifier: Linear,
+    blocks: Vec<Block>,
 }
 
 impl Model {
-    fn new(vs: VarBuilder) -> Result<Self> {
+    fn new(vb: VarBuilder) -> Result<Self> {
         let conv_cfg = Conv2dConfig {
             stride: PATCH_SIZE,
             ..Default::default()
         };
 
-        let cls_token = vs.get((1, D), "cls_token")?; 
+        let cls_token = vb.get((1, HIDDEN_SIZE), "cls_token")?;
 
         // # of patches = 64
-        let pos_embedding = embedding(64 + 1, D, vs.pp("pos_embedding"))?;
-        let patch_embedding = conv2d(3, D, PATCH_SIZE, conv_cfg, vs.pp("patch_embedding"))?;
-        let classifier = linear(D, 10, vs.pp("classifier"))?;
+        let pos_embedding = embedding(64 + 1, HIDDEN_SIZE, vb.pp("pos_embedding"))?;
+        let patch_embedding = conv2d(
+            3,
+            HIDDEN_SIZE,
+            PATCH_SIZE,
+            conv_cfg,
+            vb.pp("patch_embedding"),
+        )?;
+        let classifier = linear(HIDDEN_SIZE, 10, vb.pp("classifier"))?;
+
+        let mut blocks: Vec<Block> = Vec::new();
+
+        for i in 0..N_BLOCKS {
+            blocks.push(Block::new(vb.pp(format!("block-{i}")))?)
+        }
+
         Ok(Self {
             patch_embedding,
             pos_embedding,
             cls_token,
-            classifier
+            classifier,
+            blocks,
         })
     }
 
     fn forward(&self, x: &Tensor) -> Result<Tensor> {
         // the current batch size (could be different from BATCH_SIZE when testing)
-        let (b_size, _, _, _)  = x.dims4()?;
+        let (b_size, _, _, _) = x.dims4()?;
 
         // apply patch embedding
         let mut x = self.patch_embedding.forward(x)?;
         x = x.flatten(2, 3)?.transpose(1, 2)?;
 
-        
         // add [class] token
-        let cls = self.cls_token.expand((b_size, D))?.unsqueeze(1)?;
+        let cls = self.cls_token.expand((b_size, HIDDEN_SIZE))?.unsqueeze(1)?;
         x = Tensor::cat(&[&x, &cls], 1)?;
-
 
         // add pos embedding
         let pos_idx = (0..(NUM_PATCHES + 1) as u32).collect::<Vec<u32>>();
         let pos_tensor = Tensor::new(&pos_idx[..], &Device::Cpu)?;
-        let pos_embedding = self.pos_embedding.forward(&pos_tensor)?; 
-        
+        let pos_embedding = self.pos_embedding.forward(&pos_tensor)?;
 
         x = x.broadcast_add(&pos_embedding)?;
         // println!("{:?}", x.shape());
 
         // encode with transformer
+        for block in self.blocks.iter() {
+            x = x.apply(block)?;
+        }
 
-
-        // get [class] embedding 
+        // get [class] embedding
         let cls_embed = x.i((.., 0, ..))?;
-
         let logits = self.classifier.forward(&cls_embed)?;
         // println!("Applied classification layer: {:?}", logits.shape());
         Ok(logits)
@@ -92,14 +166,11 @@ fn main() -> Result<()> {
     let test_images = dataset.test_images.i((..SZ, .., .., ..))?;
     let test_labels = dataset.test_labels.i(..SZ)?;
 
-
-
     let varmap = VarMap::new();
-    let vs = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
-    let model = Model::new(vs)?;
+    let vb = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
+    let model = Model::new(vb)?;
 
-
-    // training 
+    // training
     let params = candle_nn::ParamsAdamW {
         lr: LEARNING_RATE,
         ..Default::default()
@@ -108,21 +179,23 @@ fn main() -> Result<()> {
     let n_batches = train_images.dim(0)? / BATCH_SIZE;
     let mut batch_idx = (0..n_batches).collect::<Vec<usize>>();
 
-
-    for epoch in 1.. 100 {
+    for epoch in 1..100 {
         batch_idx.shuffle(&mut thread_rng());
         let mut total_loss = 0f32;
 
         for idx in batch_idx.iter() {
             let logits = model.forward(&train_images.narrow(0, idx * BATCH_SIZE, BATCH_SIZE)?)?;
-            let loss = cross_entropy(&logits, &train_labels.narrow(0, idx * BATCH_SIZE, BATCH_SIZE)?)?;
+            let loss = cross_entropy(
+                &logits,
+                &train_labels.narrow(0, idx * BATCH_SIZE, BATCH_SIZE)?,
+            )?;
             optimizer.backward_step(&loss)?;
-            total_loss  += loss.to_vec0::<f32>()?; 
+            total_loss += loss.to_vec0::<f32>()?;
         }
 
-        if epoch % 5 == 0{
+        if epoch % 5 == 0 {
             let logits = model.forward(&test_images)?;
-            let loss = cross_entropy(&logits,&test_labels)?.to_vec0::<f32>()?;
+            let loss = cross_entropy(&logits, &test_labels)?.to_vec0::<f32>()?;
             println!("epoch {epoch}/100. Training: {total_loss};  Validation: {loss}");
         }
     }
