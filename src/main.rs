@@ -1,5 +1,6 @@
 use candle_core::{DType, Device, IndexOp, Module, Result, Tensor, Var};
 use candle_datasets::vision::cifar::load_dir;
+use candle_nn::ops::softmax;
 use candle_nn::{
     conv2d, linear, loss::cross_entropy, AdamW, Conv2d, Conv2dConfig, Linear, Optimizer,
     ParamsAdamW, VarBuilder, VarMap,
@@ -15,12 +16,13 @@ use rand::thread_rng;
 
 const NUM_CLASSES: usize = 10;
 const N_BLOCKS: usize = 2;
-const DEVICE: Device = Device::Cpu;
 const PATCH_SIZE: usize = 4;
 const HIDDEN_SIZE: usize = 32;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
-const LEARNING_RATE: f64 = 1e-3;
-const BATCH_SIZE: usize = 4;
+const LEARNING_RATE: f64 = 3e-4;
+const BATCH_SIZE: usize = 256;
+
+const HEAD_SIZE: usize = 32;
 
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
 
@@ -49,8 +51,39 @@ impl Module for MLP {
     }
 }
 
+struct AttentionHead {
+    key: Linear,
+    query: Linear,
+    value: Linear,
+}
+
+impl AttentionHead {
+    fn new(vb: VarBuilder) -> Result<Self> {
+        let key = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
+        let query = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
+        let value = linear(HIDDEN_SIZE, HEAD_SIZE, vb.pp("key"))?;
+
+        Ok(Self { key, query, value })
+    }
+}
+
+impl Module for AttentionHead {
+    fn forward(&self, x: &Tensor) -> Result<Tensor> {
+        let k = x.apply(&self.key)?; // (B, n_patches, HEAD_SIZE)
+        let q = x.apply(&self.query)?;
+        let scale: f64 = (HIDDEN_SIZE as f64).powf(-0.5);
+
+        let weights = (q.matmul(&k.transpose(1, 2)?)? * scale)?;
+        let weights = softmax(&weights, 1)?;
+
+        // (B, n_patches, n_patches) * (B, n_patches, HIDDEN_SIZE)
+        let v = x.apply(&self.value)?;
+        weights.matmul(&v)
+    }
+}
+
 struct Block {
-    // attention: AttentionHead,
+    attention: AttentionHead,
     mlp: MLP,
     ln1: LayerNorm,
 }
@@ -58,7 +91,7 @@ struct Block {
 impl Block {
     fn new(vb: VarBuilder) -> Result<Self> {
         let mlp = MLP::new(vb.pp("mlp"))?;
-
+        let attention = AttentionHead::new(vb.pp("attention"))?;
         let ln1 = layer_norm(
             HIDDEN_SIZE,
             LayerNormConfig {
@@ -66,17 +99,21 @@ impl Block {
             },
             vb.pp("ln1"),
         )?;
-        Ok(Self { mlp, ln1 })
+        Ok(Self {
+            mlp,
+            attention,
+            ln1,
+        })
     }
 }
 
 impl Module for Block {
     fn forward(&self, x: &Tensor) -> Result<Tensor> {
         // layer norm -> multihead   (and add original x for residual connection)
+        let x = (x + x.apply(&self.ln1)?.apply(&self.attention))?;
 
-        // layer norm -> mlp
-        let x = (x + x.apply(&self.ln1)?.apply(&self.mlp))?;
-        Ok(x)
+        // lyer norm -> mlp
+        &x + &x.apply(&self.ln1)?.apply(&self.mlp)?
     }
 }
 
@@ -137,7 +174,7 @@ impl Model {
 
         // add pos embedding
         let pos_idx = (0..(NUM_PATCHES + 1) as u32).collect::<Vec<u32>>();
-        let pos_tensor = Tensor::new(&pos_idx[..], &Device::Cpu)?;
+        let pos_tensor = Tensor::new(&pos_idx[..], &Device::new_cuda(0)?)?;
         let pos_embedding = self.pos_embedding.forward(&pos_tensor)?;
 
         x = x.broadcast_add(&pos_embedding)?;
@@ -158,16 +195,33 @@ impl Model {
 
 fn main() -> Result<()> {
     // load dataset
-    const SZ: usize = 100;
+    // const SZ: usize = 1000;
+    let device = Device::new_cuda(0)?;
+
     let dataset = load_dir("data/cifar-10")?;
-    let train_images = dataset.train_images.i((..SZ, .., .., ..))?;
-    let train_labels = dataset.train_labels.i(..SZ)?;
+    let train_images = dataset
+        .train_images
+        // .i((..SZ, .., .., ..))?
+        .to_device(&device)?;
+    let train_labels = dataset
+        .train_labels
+        // .i(..SZ)?
+        .to_dtype(DType::U32)?
+        .to_device(&device)?;
 
-    let test_images = dataset.test_images.i((..SZ, .., .., ..))?;
-    let test_labels = dataset.test_labels.i(..SZ)?;
+    let test_images = dataset
+        .test_images
+        // .i((..SZ, .., .., ..))?
+        .to_device(&device)?;
+    let test_labels = dataset
+        .test_labels
+        // .i(..SZ)?
+        .to_dtype(DType::U32)?
+        .to_device(&device)?;
 
+    println!("Finished loading dataset");
     let varmap = VarMap::new();
-    let vb = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
+    let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
     let model = Model::new(vb)?;
 
     // training
@@ -195,8 +249,17 @@ fn main() -> Result<()> {
 
         if epoch % 5 == 0 {
             let logits = model.forward(&test_images)?;
-            let loss = cross_entropy(&logits, &test_labels)?.to_vec0::<f32>()?;
-            println!("epoch {epoch}/100. Training: {total_loss};  Validation: {loss}");
+
+            println!("{:?}", logits.shape());
+            let n_correct = logits
+                .argmax(1)?
+                .eq(&test_labels)?
+                .to_dtype(DType::F32)?
+                .sum_all()?
+                .to_scalar::<f32>()?;
+
+            let accuracy = n_correct / (test_labels.dim(0)? as f32);
+            println!("epoch {epoch}/100. Training: {total_loss};  Validation: {0}%", accuracy * 100f32);
         }
     }
 
