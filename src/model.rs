@@ -150,11 +150,6 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn info(&self) -> String {
-        format!("Model: {:?}", self)
-    }
-
-
     pub fn new(vb: VarBuilder) -> Result<Model> {
         let conv_cfg = Conv2dConfig {
             stride: PATCH_SIZE,

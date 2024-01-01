@@ -19,6 +19,7 @@ use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Linear, VarBuilder, VarMap
 use candle_nn::{embedding, layer_norm, linear_no_bias, Embedding, LayerNorm, LayerNormConfig};
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct WasmModel {
     // model: Model    
     model: Model 
@@ -26,7 +27,6 @@ pub struct WasmModel {
 
 #[wasm_bindgen]
 impl WasmModel {
-    #[wasm_bindgen(constructor)]
     pub fn new() -> Result<WasmModel, JsError> {
         let varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
@@ -38,7 +38,21 @@ impl WasmModel {
         })
     }
 
-    pub fn name(&self) -> String {
-        self.model.info()
+    #[wasm_bindgen(constructor)]
+    pub fn load(weights: Vec<u8>) -> Result<WasmModel, JsError> {
+        
+        let vb = VarBuilder::from_buffered_safetensors(weights, DType::F64, &Device::Cpu)?;
+        let model = Model::new(vb.clone())?;
+        
+
+        alert("Loaded weights!");
+        Ok(Self {
+            model: model
+        })
+    }
+
+
+    pub fn info(&self) -> String {
+        format!("{:?}", self.model)
     }
 }
