@@ -20,7 +20,6 @@ const NUM_HEADS: usize = 4;
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
 
 #[derive(Debug)]
-
 struct MLP {
     layer1: Linear,
     // gelu: Activation,
@@ -44,6 +43,7 @@ impl Module for MLP {
     }
 }
 
+#[derive(Debug)]
 struct AttentionHead {
     key: Linear,
     query: Linear,
@@ -75,6 +75,7 @@ impl Module for AttentionHead {
     }
 }
 
+#[derive(Debug)]
 struct MultiAttentionHead {
     heads: Vec<AttentionHead>,
 }
@@ -103,6 +104,7 @@ impl Module for MultiAttentionHead {
     }
 }
 
+#[derive(Debug)]
 struct Block {
     attention: MultiAttentionHead,
     mlp: MLP,
@@ -138,6 +140,7 @@ impl Module for Block {
     }
 }
 
+#[derive(Debug)]
 pub struct Model {
     patch_embedding: Conv2d,
     pos_embedding: Embedding,
@@ -147,6 +150,11 @@ pub struct Model {
 }
 
 impl Model {
+    pub fn info(&self) -> String {
+        format!("Model: {:?}", self)
+    }
+
+
     pub fn new(vb: VarBuilder) -> Result<Model> {
         let conv_cfg = Conv2dConfig {
             stride: PATCH_SIZE,
