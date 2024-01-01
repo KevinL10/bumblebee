@@ -1,16 +1,10 @@
-use candle_core::{DType, Device, IndexOp, Module, Result, Tensor, Var};
-use candle_datasets::vision::cifar::load_dir;
+use candle_core::{Device, IndexOp, Module, Result, Tensor, DType};
 use candle_nn::ops::softmax;
-use candle_nn::{
-    conv2d, linear, loss::cross_entropy, AdamW, Conv2d, Conv2dConfig, Linear, Optimizer,
-    ParamsAdamW, VarBuilder, VarMap,
-};
-use candle_nn::{
-    embedding, layer_norm, seq, Activation, Embedding, LayerNorm, LayerNormConfig, Sequential, linear_no_bias,
-};
+use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Linear, VarBuilder, VarMap};
+use candle_nn::{embedding, layer_norm, linear_no_bias, Embedding, LayerNorm, LayerNormConfig};
 
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use wasm_bindgen::prelude::*;
+
 
 // use serde::Deserialize;
 
@@ -19,9 +13,6 @@ const N_BLOCKS: usize = 2;
 const PATCH_SIZE: usize = 4;
 const HIDDEN_SIZE: usize = 32;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
-const LEARNING_RATE: f64 = 3e-4;
-const BATCH_SIZE: usize = 256;
-const EPOCH: usize = 50;
 
 // NUM_HEADS * HEAD_SIZE = HIDDEN_SIZE
 const NUM_HEADS: usize = 4;
@@ -155,9 +146,8 @@ pub struct Model {
     blocks: Vec<Block>,
 }
 
-
 impl Model {
-    pub fn new(vb: VarBuilder) -> Result<Self> {
+    pub fn new(vb: VarBuilder) -> Result<Model> {
         let conv_cfg = Conv2dConfig {
             stride: PATCH_SIZE,
             ..Default::default()
@@ -223,3 +213,5 @@ impl Model {
         Ok(logits)
     }
 }
+
+

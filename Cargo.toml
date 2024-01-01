@@ -3,9 +3,25 @@ name = "webvit"
 version = "0.1.0"
 edition = "2021"
 
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
-candle-core = { version = "0.3.2", features = ["cuda"] }
+candle-core = { version = "0.3.2" }
+candle-nn = { version = "0.3.2" }
+candle-optimisers = { version = "0.3.1" }
+rand = "0.8.5"
+
+getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen = "0.2.89"
+serde-wasm-bindgen = "0.6.3"
+
+
+# Cuda features do not work with wasm-pack build
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# candle-datasets does not properly compile to WASM
 candle-datasets = "0.3.2"
+candle-core = { version = "0.3.2", features = ["cuda"] }
 candle-nn = { version = "0.3.2", features = ["cuda"] }
 candle-optimisers = { version = "0.3.1", features = ["cuda"] }
-rand = "0.8.5"
