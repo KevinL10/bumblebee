@@ -1,10 +1,9 @@
-use candle_core::{Device, IndexOp, Module, Result, Tensor, DType};
+use candle_core::{DType, Device, IndexOp, Module, Result, Tensor};
 use candle_nn::ops::softmax;
 use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Linear, VarBuilder, VarMap};
 use candle_nn::{embedding, layer_norm, linear_no_bias, Embedding, LayerNorm, LayerNormConfig};
 
 use wasm_bindgen::prelude::*;
-
 
 // use serde::Deserialize;
 
@@ -198,7 +197,7 @@ impl Model {
 
         // add pos embedding
         let pos_idx = (0..(NUM_PATCHES + 1) as u32).collect::<Vec<u32>>();
-        let pos_tensor = Tensor::new(&pos_idx[..], &Device::new_cuda(0)?)?;
+        let pos_tensor = Tensor::new(&pos_idx[..], &Device::cuda_if_available(0)?)?;
         let pos_embedding = self.pos_embedding.forward(&pos_tensor)?;
 
         x = x.broadcast_add(&pos_embedding)?;
@@ -215,6 +214,17 @@ impl Model {
         // println!("Applied classification layer: {:?}", logits.shape());
         Ok(logits)
     }
+
+    pub fn predict(&self, x: &Tensor) -> Result<Vec<f32>> {
+        let x = x.unsqueeze(0)?;
+        let logits = self.forward(&x)?;
+        // logits.argmax(1, true)
+
+        // convert logits to probabilities using softmax
+        let probs = softmax(&logits, 1)?
+            .to_dtype(DType::F32)?
+            .squeeze(0)?
+            .to_vec1::<f32>()?;
+        Ok(probs)
+    }
 }
-
-

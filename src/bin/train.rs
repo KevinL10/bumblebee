@@ -41,6 +41,7 @@ fn train(dataset: Dataset) -> Result<()> {
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
     let model = Model::new(vb.clone())?;
 
+
     varmap.load("weights.safetensors")?;
 
     // training
@@ -103,6 +104,7 @@ fn evaluate(dataset: & Dataset) -> Result<f32> {
     let mut varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
     let model = Model::new(vb.clone())?;
+    // println!("{:?}", test_images.dtype());
 
     varmap.load("weights.safetensors")?;
     let logits = model.forward(&test_images)?;
