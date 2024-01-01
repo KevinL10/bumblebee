@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 // use serde::Deserialize;
 
 const NUM_CLASSES: usize = 10;
-const N_BLOCKS: usize = 2;
+const N_BLOCKS: usize = 4;
 const PATCH_SIZE: usize = 4;
 const HIDDEN_SIZE: usize = 32;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;

@@ -11,12 +11,12 @@ use rand::thread_rng;
 
 const LEARNING_RATE: f64 = 3e-4;
 const BATCH_SIZE: usize = 256;
-const EPOCH: usize = 50;
+const EPOCH: usize = 300;
 
-const TRAIN_SZ: usize = 2000;
+const TRAIN_SZ: usize = 30000;
 const TEST_SZ: usize = 1000;
 
-fn train(dataset: Dataset) -> Result<()> {
+fn train(dataset: &Dataset) -> Result<()> {
     let device = Device::cuda_if_available(0)?;
     let train_images = dataset
         .train_images
@@ -37,12 +37,12 @@ fn train(dataset: Dataset) -> Result<()> {
         .i(..TEST_SZ)?
         .to_dtype(DType::U32)?
         .to_device(&device)?;
-    let mut varmap = VarMap::new();
+    let varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
     let model = Model::new(vb.clone())?;
 
 
-    varmap.load("weights.safetensors")?;
+    // varmap.load("weights.safetensors")?;
 
     // training
     let params = candle_nn::ParamsAdamW {
@@ -83,10 +83,10 @@ fn train(dataset: Dataset) -> Result<()> {
                 "epoch {epoch}/{EPOCH}. Training: {total_loss};  Validation: {0}%",
                 accuracy * 100f32
             );
+            varmap.save("weights.safetensors")?;
         }
     }
 
-    varmap.save("weights.safetensors")?;
     Ok(())
 }
 
@@ -126,7 +126,7 @@ fn main() -> Result<()> {
     let dataset = load_dir("data/cifar-10")?;
     println!("Finished loading dataset");
 
-    // train(dataset)?;
+    train(&dataset)?;
     let accuracy = evaluate(&dataset)?;
 
     println!("Accuracy: {}", accuracy);

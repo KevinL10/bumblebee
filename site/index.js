@@ -1,48 +1,56 @@
 import * as wasm from "webvit";
 
-// wasm.greet("abcd");
 
+let imageBytes = null;
+let model = null;
 
-
-// fetch()j
-// const weights = Uint8Array(await res.arrayBuffer());
 async function fetchImage() {
-
-    const res = await fetch('/public/cat1.png', {cache: "force-cache"});
+    const res = await fetch('/public/airplane1.png', {cache: "force-cache"});
     const image = new Uint8Array(await res.arrayBuffer());
+    imageBytes = image;
+
+    // set image in html
+    var base64String = btoa(String.fromCharCode.apply(null, new Uint8Array(image)));
+    document.getElementById("image").src = "data:image/png;base64," + base64String;
 
     return image;
 }
 
-async function fetchWeights() {
-
+async function init() {
     const res = await fetch('/public/weights.safetensors', {cache: "force-cache"});
     const weights = new Uint8Array(await res.arrayBuffer());
-    return weights
+    
+    model = new wasm.WasmModel(weights);
 }
 
-//
-async function main() {
+async function predict() {
+    if(imageBytes === null) {
+        alert("cannot predict without image")
+        return;
+    }
 
-    const weights = await fetchWeights();
-
-    console.log('fetched weights')
-    const model = new wasm.WasmModel(weights);
-
-    let image = await fetchImage();
+    // let image = await fetchImage();
     console.log('fetched image')
     console.log(model.info())
 
-    console.log(image.length);
+    console.log(imageBytes);
+    console.log(imageBytes.length);
 
     console.log('predicting')
-    let probs = model.predict_image(image);
+    let probs = model.predict_image(imageBytes);
     console.log(probs);
 }
 
+let randomButton = document.getElementById("random");
+let predictButton = document.getElementById("predict");
 
-let button = document.getElementById("button");
+// TODO: fix orders of init
+init()
 
-button.addEventListener("click", () => {
-    main();
+randomButton.addEventListener("click", () => {
+    fetchImage();
+});
+
+predictButton.addEventListener("click", () => {
+    predict();
 });
