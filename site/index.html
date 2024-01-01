@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <title>hello-wasm example</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -15,16 +16,17 @@
     </div>
     <div class="flex-1 flex justify-around ">
       <div class="w-1/4 h-[60vh] space-y-4 flex flex-col">
-        <div class="flex-1 bg-gray-100 rounded-md ">
-          <img id="image"> 
+        <div class="flex-1 bg-gray-100 rounded-md">
+          <img id="image" class="w-full"> 
         </div>
         <button id="random" class="flex justify-center bg-black text-white px-3 py-4 rounded-lg">Random image</button>
         <button id="predict" class="flex justify-center bg-slate-700 text-white px-3 py-4 rounded-lg">Predict</button>
       </div>
       <div class="bg-gray-100 rounded-md w-1/4 h-[60vh]">
-        <div class="flex justify-center items-center h-full">
+        <!-- <div class="flex justify-center items-center h-full">
           No image selected.
-        </div>
+        </div> -->
+        <canvas id="chart"></canvas>
       </div>
     </div>
   </div>
