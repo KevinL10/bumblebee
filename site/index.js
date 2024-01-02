@@ -4,7 +4,7 @@ let imageBytes = null;
 let model = null;
 let chart = null;
 
-const images = ["airplane1", "cat1"];
+const images = ["airplane1", "cat1", "bumblebee"];
 
 async function fetchRandomImage() {
   const img = images[Math.floor(Math.random() * images.length)];
