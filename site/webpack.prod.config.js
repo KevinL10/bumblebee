@@ -16,6 +16,7 @@ module.exports = {
     new CopyPlugin({
       patterns: [
         { from: "public", to: "public" },
+        { from: "favicon.ico", to: "favicon.ico"}
       ],
     }),
   ]

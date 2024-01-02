@@ -123,20 +123,20 @@ function setupChart(probabilities) {
       }
     },
   });
-
-
 }
 
-let randomButton = document.getElementById("random");
-let predictButton = document.getElementById("predict");
 
-// TODO: fix orders of init
-init();
+function main() {
+  let randomButton = document.getElementById("random");
+  init();
 
-randomButton.addEventListener("click", () => {
-  fetchRandomImage();
-});
+  randomButton.addEventListener("click", () => {
+    fetchRandomImage();
+  });
+}
 
-predictButton.addEventListener("click", () => {
-  predict();
-});
+document.addEventListener('DOMContentLoaded', main);
+
+if (document.readyState !== 'loading') {
+    main();
+}
