@@ -4,10 +4,10 @@ let imageBytes = null;
 let model = null;
 let chart = null;
 
-const images = ["airplane1", "cat1"]
+const images = ["airplane1", "cat1"];
 
 async function fetchRandomImage() {
-  const img = images[Math.floor(Math.random() * images.length)]
+  const img = images[Math.floor(Math.random() * images.length)];
   const res = await fetch(`/public/${img}.png`, { cache: "force-cache" });
   const bytes = new Uint8Array(await res.arrayBuffer());
   imageBytes = bytes;
@@ -19,7 +19,8 @@ async function fetchRandomImage() {
   document.getElementById("image").src =
     "data:image/png;base64," + base64String;
 
-//   return ;
+  //   return ;
+  predict();
 }
 
 async function init() {
@@ -29,6 +30,9 @@ async function init() {
   const weights = new Uint8Array(await res.arrayBuffer());
 
   model = new wasm.WasmModel(weights);
+
+
+  fetchRandomImage();
 }
 
 async function predict() {
@@ -45,9 +49,20 @@ async function predict() {
   console.log(imageBytes.length);
 
   console.log("predicting");
+  
+  let start = performance.now();
+
   let probs = model.predict_image(imageBytes);
+  let timeElapsed = performance.now() - start;
   console.log(probs);
+  console.log(timeElapsed);
+  setInferenceTime(timeElapsed.toFixed(2)); 
   setupChart(probs);
+}
+
+
+function setInferenceTime(time) {
+  document.getElementById("inference").innerHTML = `Inference time: ${time}ms`;
 }
 
 function setupChart(probabilities) {
@@ -56,6 +71,8 @@ function setupChart(probabilities) {
   }
 
   const ctx = document.getElementById("chart");
+  const height = document.getElementById("content").clientHeight;
+  // ctx.style.maxHeight = (height - 100) + "px";
 
   chart = new Chart(ctx, {
     type: "bar",
@@ -81,14 +98,33 @@ function setupChart(probabilities) {
       ],
     },
     options: {
+      backgroundColor: "rgba(202, 138, 4, 0.8)",
       maintainAspectRatio: false,
       scales: {
         y: {
-          beginAtZero: true,
+          min: 0,
+          max: 1
+          // display: false,
+        },
+        x: {
+          ticks: {
+          autoSkip: false,
+
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false,
         },
       },
+      animation: {
+        duration: 0,
+      }
     },
   });
+
+
 }
 
 let randomButton = document.getElementById("random");
