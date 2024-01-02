@@ -4,6 +4,8 @@
 todo: 
 - fix old dependencies for webpack
 - add rust build stage to vercel (currently only runs `npm install && npm run build`)
+- rename webvit
+- fix document loading with index.html
 
 model implementation
 
