@@ -1,5 +1,5 @@
 use candle_datasets::vision::Dataset;
-use webvit::model::Model;
+use bumblebee::model::Model;
 
 use candle_core::{DType, Device, IndexOp, Result};
 use candle_datasets::vision::cifar::load_dir;

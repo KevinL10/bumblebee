@@ -4,7 +4,7 @@
     "build": "NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider webpack --config webpack.prod.config.js"
   },
   "dependencies": {
-    "webvit": "file:../pkg"
+    "bumblebee": "file:../pkg"
   },
   "devDependencies": {
     "copy-webpack-plugin": "^6.4.1",

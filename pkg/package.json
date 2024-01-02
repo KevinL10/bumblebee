@@ -1,16 +1,16 @@
 {
-  "name": "webvit",
+  "name": "bumblebee",
   "version": "0.1.0",
   "files": [
-    "webvit_bg.wasm",
-    "webvit.js",
-    "webvit_bg.js",
-    "webvit.d.ts"
+    "bumblebee_bg.wasm",
+    "bumblebee.js",
+    "bumblebee_bg.js",
+    "bumblebee.d.ts"
   ],
-  "module": "webvit.js",
-  "types": "webvit.d.ts",
+  "module": "bumblebee.js",
+  "types": "bumblebee.d.ts",
   "sideEffects": [
-    "./webvit.js",
+    "./bumblebee.js",
     "./snippets/*"
   ]
 }

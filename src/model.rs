@@ -3,7 +3,6 @@ use candle_nn::ops::softmax;
 use candle_nn::{conv2d, linear, Conv2d, Conv2dConfig, Linear, VarBuilder, VarMap};
 use candle_nn::{embedding, layer_norm, linear_no_bias, Embedding, LayerNorm, LayerNormConfig};
 
-use wasm_bindgen::prelude::*;
 
 // use serde::Deserialize;
 

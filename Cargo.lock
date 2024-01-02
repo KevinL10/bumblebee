@@ -249,6 +249,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bumblebee"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-datasets",
+ "candle-nn",
+ "candle-optimisers",
+ "getrandom",
+ "image",
+ "rand",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2336,21 +2351,6 @@ name = "webpki-roots"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1778a42e8b3b90bff8d0f5032bf22250792889a5cdc752aa0020c84abe3aaf10"
-
-[[package]]
-name = "webvit"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-datasets",
- "candle-nn",
- "candle-optimisers",
- "getrandom",
- "image",
- "rand",
- "serde-wasm-bindgen",
- "wasm-bindgen",
-]
 
 [[package]]
 name = "weezl"

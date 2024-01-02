@@ -1,22 +1,13 @@
 # Bumblebee 
 
+Bumblebee is a small vision transformer that runs locally in the browser with WASM, implemented in Rust using [Candle ML](https://github.com/huggingface/candle) framework.
+
+Bumblebee achieves 42% accuracy on the CIFAR-10 dataset. Training took 3 minutes on an NVIDIA 1060 GPU.
+
 
 todo: 
 - fix old dependencies for webpack
 - add rust build stage to vercel (currently only runs `npm install && npm run build`)
-- rename webvit
 - fix document loading with index.html
-
-model implementation
-
-- [x] load cifar-10 dataset and update training process (batching)
-- [x] add learnable start token `[class]` & classify
-- [x] add layernorm & multi-head attention
-- [x] add layernorm & mlp & repeat
-- [ ] benchmarking
-- [ ] add dropout for training 
-
-compilation:
-- [x] save & load weights 
-- [ ] compile to wasm (webgpu)
-- [ ] add boilerplate index.html & js loader
+- add dropout to training 
+- refactor code, move model/training params to config class

@@ -1,4 +1,4 @@
-import * as wasm from "webvit";
+import * as wasm from "bumblebee";
 
 let imageBytes = null;
 let model = null;
@@ -43,7 +43,7 @@ async function predict() {
 
   // let image = await fetchImage();
   console.log("fetched image");
-  console.log(model.info());
+  // console.log(model.info());
 
   console.log(imageBytes);
   console.log(imageBytes.length);
@@ -67,7 +67,7 @@ function setInferenceTime(time) {
 
 function setupChart(probabilities) {
   if (chart !== null) {
-    chart.destroy();
+    // chart.destroy();
   }
 
   const ctx = document.getElementById("chart");
