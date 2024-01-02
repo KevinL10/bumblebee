@@ -1,5 +1,8 @@
 # vit
 
+
+todo: fix old dependencies for webpack
+
 model implementation
 
 - [x] load cifar-10 dataset and update training process (batching)
