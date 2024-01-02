@@ -1,7 +1,9 @@
-# vit
+# Bumblebee 
 
 
-todo: fix old dependencies for webpack
+todo: 
+- fix old dependencies for webpack
+- add rust build stage to vercel (currently only runs `npm install && npm run build`)
 
 model implementation
 

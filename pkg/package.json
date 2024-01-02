@@ -1,0 +1,16 @@
+{
+  "name": "webvit",
+  "version": "0.1.0",
+  "files": [
+    "webvit_bg.wasm",
+    "webvit.js",
+    "webvit_bg.js",
+    "webvit.d.ts"
+  ],
+  "module": "webvit.js",
+  "types": "webvit.d.ts",
+  "sideEffects": [
+    "./webvit.js",
+    "./snippets/*"
+  ]
+}

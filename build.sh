@@ -1,6 +1,7 @@
+# Compile Rust to WASM
 cargo build 
-npm install --prefix site
-
-
 wasm-pack build --out-dir site/pkg
+
+# Install package and build site
+npm install --prefix site
 npm run build --prefix site
