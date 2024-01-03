@@ -6,7 +6,7 @@ let chart = null;
 
 const images = ["airplane1", "cat1", "bumblebee"];
 
-async function fetchRandomImage() {
+async function newImagePredict() {
   const img = images[Math.floor(Math.random() * images.length)];
   const res = await fetch(`/public/${img}.png`, { cache: "force-cache" });
   const bytes = new Uint8Array(await res.arrayBuffer());
@@ -18,8 +18,7 @@ async function fetchRandomImage() {
   );
   document.getElementById("image").src =
     "data:image/png;base64," + base64String;
-
-  //   return ;
+    
   predict();
 }
 
@@ -28,11 +27,8 @@ async function init() {
     cache: "force-cache",
   });
   const weights = new Uint8Array(await res.arrayBuffer());
-
   model = new wasm.WasmModel(weights);
-
-
-  fetchRandomImage();
+  newImagePredict();
 }
 
 async function predict() {
@@ -40,22 +36,10 @@ async function predict() {
     alert("cannot predict without image");
     return;
   }
-
-  // let image = await fetchImage();
-  console.log("fetched image");
-  // console.log(model.info());
-
-  console.log(imageBytes);
-  console.log(imageBytes.length);
-
-  console.log("predicting");
-  
   let start = performance.now();
-
   let probs = model.predict_image(imageBytes);
   let timeElapsed = performance.now() - start;
-  console.log(probs);
-  console.log(timeElapsed);
+
   setInferenceTime(timeElapsed.toFixed(2)); 
   setupChart(probs);
 }
@@ -67,7 +51,7 @@ function setInferenceTime(time) {
 
 function setupChart(probabilities) {
   if (chart !== null) {
-    // chart.destroy();
+    chart.destroy();
   }
 
   const ctx = document.getElementById("chart");
@@ -131,12 +115,13 @@ function main() {
   init();
 
   randomButton.addEventListener("click", () => {
-    fetchRandomImage();
+    newImagePredict();
   });
 }
 
 document.addEventListener('DOMContentLoaded', main);
+// window.onload = main
 
-if (document.readyState !== 'loading') {
-    main();
+if(document.readyState !== 'loading') {
+  main();
 }
