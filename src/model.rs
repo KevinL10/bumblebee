@@ -9,7 +9,7 @@ use candle_nn::{embedding, layer_norm, linear_no_bias, Embedding, LayerNorm, Lay
 const NUM_CLASSES: usize = 10;
 const N_BLOCKS: usize = 4;
 const PATCH_SIZE: usize = 4;
-const HIDDEN_SIZE: usize = 32;
+const HIDDEN_SIZE: usize = 128;
 const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
 
 // NUM_HEADS * HEAD_SIZE = HIDDEN_SIZE

@@ -4,7 +4,7 @@ let imageBytes = null;
 let model = null;
 let chart = null;
 
-const images = ["airplane1", "cat1", "bumblebee"];
+const images = ["airplane1", "cat1", "bumblebee", "truck"];
 
 async function newImagePredict() {
   const img = images[Math.floor(Math.random() * images.length)];

@@ -7,7 +7,7 @@ Bumblebee is a small vision transformer that runs locally in the browser with WA
 
 ![](ex.png)
 
-Bumblebee achieves 42% accuracy on the CIFAR-10 dataset. Training took 3 minutes on an NVIDIA 1060 GPU.
+Bumblebee achieves 56.11% accuracy on the CIFAR-10 dataset. Training took 40 epochs on an RTX 4090 GPU.
 
 ### Usage
 
