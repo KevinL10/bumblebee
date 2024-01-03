@@ -4,11 +4,25 @@ let imageBytes = null;
 let model = null;
 let chart = null;
 
-const images = ["airplane1", "cat1", "bumblebee", "truck"];
+const images = [
+  "bumblebee.png",
+  "airplane2.png",
+  "truck.jpg",
+  "bird1.webp",
+  "frog2.jpg",
+  "dog1.jpeg",
+  "airplane1.png",
+  "cat.png",
+  "automobile2.png",
+  "airplane3.png",
+  "bird2.webp",
+  "frog1.png",
+  "automobile1.png",
+];
 
 async function newImagePredict() {
   const img = images[Math.floor(Math.random() * images.length)];
-  const res = await fetch(`/public/${img}.png`, { cache: "force-cache" });
+  const res = await fetch(`/public/${img}`, { cache: "force-cache" });
   const bytes = new Uint8Array(await res.arrayBuffer());
   imageBytes = bytes;
 
@@ -18,7 +32,7 @@ async function newImagePredict() {
   );
   document.getElementById("image").src =
     "data:image/png;base64," + base64String;
-    
+
   predict();
 }
 
@@ -40,10 +54,9 @@ async function predict() {
   let probs = model.predict_image(imageBytes);
   let timeElapsed = performance.now() - start;
 
-  setInferenceTime(timeElapsed.toFixed(2)); 
+  setInferenceTime(timeElapsed.toFixed(2));
   setupChart(probs);
 }
-
 
 function setInferenceTime(time) {
   document.getElementById("inference").innerHTML = `Inference time: ${time}ms`;
@@ -87,15 +100,14 @@ function setupChart(probabilities) {
       scales: {
         y: {
           min: 0,
-          max: 1
+          max: 1,
           // display: false,
         },
         x: {
           ticks: {
-          autoSkip: false,
-
-          }
-        }
+            autoSkip: false,
+          },
+        },
       },
       plugins: {
         legend: {
@@ -104,11 +116,10 @@ function setupChart(probabilities) {
       },
       animation: {
         duration: 0,
-      }
+      },
     },
   });
 }
-
 
 function main() {
   let randomButton = document.getElementById("random");
@@ -119,9 +130,9 @@ function main() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', main);
+document.addEventListener("DOMContentLoaded", main);
 // window.onload = main
 
-if(document.readyState !== 'loading') {
+if (document.readyState !== "loading") {
   main();
 }
