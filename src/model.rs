@@ -14,7 +14,6 @@ const INTERMEDIATE_SIZE: usize = HIDDEN_SIZE * 4;
 
 // NUM_HEADS * HEAD_SIZE = HIDDEN_SIZE
 const NUM_HEADS: usize = 4;
-
 const NUM_PATCHES: usize = (32 * 32) / (PATCH_SIZE * PATCH_SIZE);
 
 #[derive(Debug)]

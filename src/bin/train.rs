@@ -1,7 +1,7 @@
 use candle_datasets::vision::Dataset;
 use bumblebee::model::Model;
 
-use candle_core::{DType, Device, IndexOp, Result};
+use candle_core::{DType, Device, Tensor, Result};
 use candle_datasets::vision::cifar::load_dir;
 
 use candle_nn::{loss::cross_entropy, AdamW, Optimizer, VarBuilder, VarMap};
@@ -13,38 +13,29 @@ const LEARNING_RATE: f64 = 3e-4;
 const BATCH_SIZE: usize = 256;
 const EPOCH: usize = 300;
 
-const TRAIN_SZ: usize = 30000;
-const TEST_SZ: usize = 1000;
 
 fn train(dataset: &Dataset) -> Result<()> {
     let device = Device::cuda_if_available(0)?;
     let train_images = dataset
         .train_images
-        .i((..TRAIN_SZ, .., .., ..))?
         .to_device(&device)?;
     let train_labels = dataset
         .train_labels
-        .i(..TRAIN_SZ)?
         .to_dtype(DType::U32)?
         .to_device(&device)?;
 
     let test_images = dataset
         .test_images
-        .i((..TEST_SZ, .., .., ..))?
         .to_device(&device)?;
     let test_labels = dataset
         .test_labels
-        .i(..TEST_SZ)?
         .to_dtype(DType::U32)?
         .to_device(&device)?;
+
     let varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
     let model = Model::new(vb.clone())?;
 
-
-    // varmap.load("weights.safetensors")?;
-
-    // training
     let params = candle_nn::ParamsAdamW {
         lr: LEARNING_RATE,
         ..Default::default()
@@ -68,17 +59,7 @@ fn train(dataset: &Dataset) -> Result<()> {
         }
 
         if epoch % 5 == 0 {
-            let logits = model.forward(&test_images)?;
-
-            println!("{:?}", logits.shape());
-            let n_correct = logits
-                .argmax(1)?
-                .eq(&test_labels)?
-                .to_dtype(DType::F32)?
-                .sum_all()?
-                .to_scalar::<f32>()?;
-
-            let accuracy = n_correct / (test_labels.dim(0)? as f32);
+            let accuracy = evaluate(&model, &test_images, &test_labels)?;
             println!(
                 "epoch {epoch}/{EPOCH}. Training: {total_loss};  Validation: {0}%",
                 accuracy * 100f32
@@ -90,45 +71,27 @@ fn train(dataset: &Dataset) -> Result<()> {
     Ok(())
 }
 
-fn evaluate(dataset: & Dataset) -> Result<f32> {
-    let device = Device::cuda_if_available(0)?;
-    let test_images = dataset
-        .test_images
-        .i((..TEST_SZ, .., .., ..))?
-        .to_device(&device)?;
-    let test_labels = dataset
-        .test_labels
-        .i(..TEST_SZ)?
-        .to_dtype(DType::U32)?
-        .to_device(&device)?;
-    let mut varmap = VarMap::new();
-    let vb = VarBuilder::from_varmap(&varmap, DType::F32, &device);
-    let model = Model::new(vb.clone())?;
-    // println!("{:?}", test_images.dtype());
-
-    varmap.load("weights.safetensors")?;
-    let logits = model.forward(&test_images)?;
-
-    let n_correct = logits
-        .argmax(1)?
-        .eq(&test_labels)?
-        .to_dtype(DType::F32)?
-        .sum_all()?
-        .to_scalar::<f32>()?;
+fn evaluate(model: &Model, test_images: &Tensor, test_labels: &Tensor) -> Result<f32> {
+    let mut n_correct = 0f32;
+    for i in 0..test_labels.dim(0)?/BATCH_SIZE {
+        let logits = model.forward(&test_images.narrow(0, i * BATCH_SIZE, BATCH_SIZE)?)?;
+        let labels = test_labels.narrow(0, i * BATCH_SIZE, BATCH_SIZE)?;    
+        n_correct += logits
+            .argmax(1)?
+            .eq(&labels)?
+            .to_dtype(DType::F32)?
+            .sum_all()?
+            .to_scalar::<f32>()?;
+    }
 
     Ok(n_correct / (test_labels.dim(0)? as f32))
 }
 
 
 fn main() -> Result<()> {
-    // load dataset
-
     let dataset = load_dir("data/cifar-10")?;
     println!("Finished loading dataset");
 
     train(&dataset)?;
-    let accuracy = evaluate(&dataset)?;
-
-    println!("Accuracy: {}", accuracy);
     Ok(())
 }
