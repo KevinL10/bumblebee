@@ -3,7 +3,7 @@
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=bumblebee-seven&name=Vercel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Bumblebee is a small vision transformer that runs locally in the browser with WASM, implemented in Rust using [Candle ML](https://github.com/huggingface/candle) framework.
+Bumblebee is a small vision transformer that runs locally in the browser with WASM, implemented in Rust using [Candle](https://github.com/huggingface/candle).
 
 ![](ex.png)
 
